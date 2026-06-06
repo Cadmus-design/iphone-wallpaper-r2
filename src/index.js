@@ -3,10 +3,12 @@ export default {
     const url = new URL(request.url);
     const authSecret = env.AUTH_SECRET || "change-this-in-cloudflare-secrets";
 
-    // 1. Random Image (GET /random?folder=xxx)
+    // 1. Random Image (GET /random?folder=xxx or ?folder=* for all folders)
     if (request.method === "GET" && url.pathname === "/random") {
       const folder = url.searchParams.get("folder") || "default";
-      const objects = await listAllObjects(env.MY_BUCKET, `${folder}/`);
+      const objects = folder === "*"
+        ? await listAllObjects(env.MY_BUCKET, "")
+        : await listAllObjects(env.MY_BUCKET, `${folder}/`);
 
       if (objects.length === 0) {
         return new Response("No images found in folder: " + folder, { status: 404 });
