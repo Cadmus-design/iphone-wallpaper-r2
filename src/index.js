@@ -6,18 +6,17 @@ export default {
     // 1. Random Image (GET /random?folder=xxx)
     if (request.method === "GET" && url.pathname === "/random") {
       const folder = url.searchParams.get("folder") || "default";
-      const list = await env.MY_BUCKET.list({ prefix: `${folder}/` });
-      
-      if (!list.objects || list.objects.length === 0) {
+      const objects = await listAllObjects(env.MY_BUCKET, `${folder}/`);
+
+      if (objects.length === 0) {
         return new Response("No images found in folder: " + folder, { status: 404 });
       }
-      
-      const randomIndex = Math.floor(Math.random() * list.objects.length);
-      const item = list.objects[randomIndex];
+
+      const item = objects[Math.floor(Math.random() * objects.length)];
       const object = await env.MY_BUCKET.get(item.key);
 
       return new Response(object.body, {
-        headers: { 
+        headers: {
           "Content-Type": object.httpMetadata?.contentType || "image/jpeg",
           "Cache-Control": "no-cache"
         }
@@ -32,8 +31,9 @@ export default {
       }
 
       const folder = url.searchParams.get("folder") || "default";
-      const timestamp = Date.now();
-      const fileName = `${folder}/${timestamp}.jpg`;
+      const contentType = request.headers.get("Content-Type") || "image/jpeg";
+      const ext = contentType.includes("png") ? "png" : "jpg";
+      const fileName = `${folder}/${Date.now()}.${ext}`;
       const body = await request.arrayBuffer();
 
       if (body.byteLength === 0) {
@@ -41,28 +41,44 @@ export default {
       }
 
       await env.MY_BUCKET.put(fileName, body, {
-        httpMetadata: { contentType: "image/jpeg" }
+        httpMetadata: { contentType }
       });
 
       return new Response(JSON.stringify({
         success: true,
         message: `Uploaded to ${fileName}`,
         key: fileName
-      }), { 
+      }), {
         status: 201,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 3. List Folders (GET /folders) - Optional for UI
+    // 3. List Folders (GET /folders)
     if (request.method === "GET" && url.pathname === "/folders") {
-        const list = await env.MY_BUCKET.list({ delimiter: '/' });
-        const folders = list.delimitedPrefixes.map(p => p.replace('/', ''));
-        return new Response(JSON.stringify(folders), {
-            headers: { "Content-Type": "application/json" }
-        });
+      const list = await env.MY_BUCKET.list({ delimiter: "/" });
+      const folders = list.delimitedPrefixes.map(p => p.replace(/\/$/, ""));
+      return new Response(JSON.stringify(folders), {
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
     return new Response("Wallpaper API: Use /random or /upload", { status: 200 });
   }
 };
+
+// 處理 R2 list() 分頁，並過濾掉資料夾節點（key 以 / 結尾）
+async function listAllObjects(bucket, prefix) {
+  const objects = [];
+  let cursor;
+
+  do {
+    const result = await bucket.list({ prefix, cursor });
+    for (const obj of result.objects) {
+      if (!obj.key.endsWith("/")) objects.push(obj);
+    }
+    cursor = result.truncated ? result.cursor : undefined;
+  } while (cursor);
+
+  return objects;
+}
