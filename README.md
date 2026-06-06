@@ -9,6 +9,7 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/random?folder=xxx` | 隨機回傳一張圖片（binary） |
+| GET | `/random?folder=*` | 跨所有資料夾隨機回傳一張圖片 |
 | POST | `/upload?folder=xxx` | 上傳圖片（需 Auth header） |
 | GET | `/folders` | 列出所有資料夾 |
 
@@ -135,3 +136,5 @@ my-wallpapers/
 ```
 
 捷徑 URL 改 `?folder=dark` 即可切換主題。
+
+`?folder=*` 會跨所有資料夾隨機抽，適合設成「完全隨機換桌布」捷徑。
