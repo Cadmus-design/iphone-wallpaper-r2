@@ -47,7 +47,7 @@ wrangler secret put AUTH_SECRET
 wrangler deploy
 ```
 
-部署完成後會輸出 Worker URL，格式為 `https://wallpaper-api.<your-subdomain>.workers.dev`。
+部署完成後會輸出 Worker URL，格式為 `https://iphone-wallpaper-r2.<your-subdomain>.workers.dev`。
 
 ---
 
